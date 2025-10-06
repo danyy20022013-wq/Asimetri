@@ -1,70 +1,75 @@
 package servidormulti;
-
-import java.io.BufferedReader;
-
 import java.io.DataInputStream;
-
 import java.io.DataOutputStream;
-
 import java.io.IOException;
-
-import java.io.InputStreamReader;
-
 import java.net.Socket;
 
 public class UnCliente implements Runnable {
 
     final DataOutputStream salida;
-
-    final BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in));
-
     final DataInputStream entrada;
+    String nombreUsuario;
 
     UnCliente(Socket s) throws IOException {
-
-        salida = new DataOutputStream(s.getOutputStream());
-
-        entrada = new DataInputStream(s.getInputStream());
-
+        this.salida = new DataOutputStream(s.getOutputStream());
+        this.entrada = new DataInputStream(s.getInputStream());
     }
 
     @Override
-
     public void run() {
+        try {
 
-        while (true) {
+            this.nombreUsuario = entrada.readUTF();
 
-            try {
 
+            ServidorMulti.clientes.put(this.nombreUsuario, this);
+
+
+            System.out.println("Se conectó: " + this.nombreUsuario);
+            for (UnCliente cliente : ServidorMulti.clientes.values()) {
+                if (cliente != this) { // No enviar el mensaje a sí mismo
+                    cliente.salida.writeUTF("--> " + this.nombreUsuario + " se ha unido al chat.");
+                }
+            }
+
+
+            while (true) {
                 String mensaje = entrada.readUTF();
 
                 if (mensaje.startsWith("@")) {
-
                     String[] partes = mensaje.split(" ", 2);
+                    if (partes.length < 2) continue;
 
-                    String aQuien = partes[0].substring(1);
+                    String destinatarioNombre = partes[0].substring(1);
+                    UnCliente destinatario = ServidorMulti.clientes.get(destinatarioNombre);
 
-                    UnCliente cliente = ServidorMulti.clientes.get(aQuien);
-
-                    cliente.salida.writeUTF(mensaje);
-
-                    return;
-
+                    if (destinatario != null) {
+                        String mensajePrivado = this.nombreUsuario + " (privado): " + partes[1];
+                        destinatario.salida.writeUTF(mensajePrivado);
+                    } else {
+                        this.salida.writeUTF("--> Usuario '" + destinatarioNombre + "' no encontrado.");
+                    }
+                } else {
+                    String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
+                    for (UnCliente cliente : ServidorMulti.clientes.values()) {
+                        cliente.salida.writeUTF(mensajeConRemitente);
+                    }
                 }
-
-                for (UnCliente cliente : ServidorMulti.clientes.values()) {
-
-                    cliente.salida.writeUTF(mensaje);
-
-                }
-
-            } catch (IOException ex) {
-
             }
+        } catch (IOException ex) {
 
+            if (this.nombreUsuario != null) {
+                System.out.println(this.nombreUsuario + " se ha desconectado.");
+                ServidorMulti.clientes.remove(this.nombreUsuario);
+
+                try {
+                    for (UnCliente cliente : ServidorMulti.clientes.values()) {
+                        cliente.salida.writeUTF("--> " + this.nombreUsuario + " ha abandonado el chat.");
+                    }
+                } catch (IOException e) {
+
+                }
+            }
         }
-
     }
-
 }
-
