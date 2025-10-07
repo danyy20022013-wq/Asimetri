@@ -10,6 +10,8 @@ public class ServidorMulti {
 
     static HashMap<String, UnCliente> clientes = new HashMap<>();
 
+    private static int contadorInvitados = 1;
+
     public static void main(String[] args) {
         int puerto = 8080;
 
@@ -19,8 +21,8 @@ public class ServidorMulti {
             while (true) {
                 Socket socket = servidorSocket.accept();
 
-
-                UnCliente uncliente = new UnCliente(socket);
+                String idInvitado = "chango-" + contadorInvitados++;
+                UnCliente uncliente = new UnCliente(socket, idInvitado);
                 Thread hilo = new Thread(uncliente);
                 hilo.start();
             }
