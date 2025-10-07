@@ -1,4 +1,4 @@
-package clientemulti;
+package clientemulti.clientemulti;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -22,11 +22,9 @@ public class ClienteMulti {
 
         System.out.println("¡Conectado! Ahora puedes empezar a chatear.");
 
-
         ParaMandar paraMandar = new ParaMandar(s, teclado);
         Thread hiloParaMandar = new Thread(paraMandar);
         hiloParaMandar.start();
-
 
         ParaRecibir paraRecibir = new ParaRecibir(s);
         Thread hiloParaRecibir = new Thread(paraRecibir);

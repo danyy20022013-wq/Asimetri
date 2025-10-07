@@ -1,12 +1,9 @@
-package clientemulti;
-
+package clientemulti.clientemulti;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
-
-public class ParaRecibir implements Runnable {
+public class ParaRecibir implements Runnable{
     final DataInputStream entrada;
-
     public ParaRecibir(Socket s) throws IOException {
         entrada = new DataInputStream(s.getInputStream());
     }
@@ -14,14 +11,14 @@ public class ParaRecibir implements Runnable {
     @Override
     public void run() {
         String mensaje;
-        while (true) {
+        mensaje = "";
+        while(true){
             try {
                 mensaje = entrada.readUTF();
                 System.out.println(mensaje);
             } catch (IOException ex) {
-                System.out.println("Se ha perdido la conexión con el servidor.");
-                break;
             }
         }
     }
+
 }

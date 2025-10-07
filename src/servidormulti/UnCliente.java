@@ -1,4 +1,5 @@
 package servidormulti;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -27,7 +28,7 @@ public class UnCliente implements Runnable {
 
             System.out.println("Se conectó: " + this.nombreUsuario);
             for (UnCliente cliente : ServidorMulti.clientes.values()) {
-                if (cliente != this) { // No enviar el mensaje a sí mismo
+                if (cliente != this) {
                     cliente.salida.writeUTF("--> " + this.nombreUsuario + " se ha unido al chat.");
                 }
             }
@@ -52,7 +53,10 @@ public class UnCliente implements Runnable {
                 } else {
                     String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
                     for (UnCliente cliente : ServidorMulti.clientes.values()) {
-                        cliente.salida.writeUTF(mensajeConRemitente);
+
+                        if (cliente != this) {
+                            cliente.salida.writeUTF(mensajeConRemitente);
+                        }
                     }
                 }
             }
@@ -61,8 +65,8 @@ public class UnCliente implements Runnable {
             if (this.nombreUsuario != null) {
                 System.out.println(this.nombreUsuario + " se ha desconectado.");
                 ServidorMulti.clientes.remove(this.nombreUsuario);
-
                 try {
+
                     for (UnCliente cliente : ServidorMulti.clientes.values()) {
                         cliente.salida.writeUTF("--> " + this.nombreUsuario + " ha abandonado el chat.");
                     }
