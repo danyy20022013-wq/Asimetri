@@ -41,7 +41,7 @@ public class UnCliente implements Runnable {
                         continue;
                     }
 
-                    String nuevoNombre = mensaje.substring(13).trim();
+                    String nuevoNombre = mensaje.substring(7).trim();
                     if (ServidorMulti.clientes.containsKey(nuevoNombre)) {
                         salida.writeUTF(" Error: El nombre '" + nuevoNombre + "' ya está en uso. Elige otro.");
                     } else {
@@ -80,7 +80,7 @@ public class UnCliente implements Runnable {
                                 }
                             }
                             if(contadorMensajesInvitado == 3) {
-                                salida.writeUTF(" Has agotado tus mensajes de invitado. Usa /identificar <nombre> para continuar.");
+                                salida.writeUTF(" Has agotado tus mensajes de invitado. Usa nombre: <nombre> para continuar.");
                             }
                         } else {
                             salida.writeUTF(" Límite de mensajes alcanzado. Debes identificarte para chatear.");
