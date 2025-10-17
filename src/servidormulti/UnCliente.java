@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Set;
 
 public class UnCliente implements Runnable {
 
@@ -14,6 +15,7 @@ public class UnCliente implements Runnable {
     private final String idInvitadoOriginal;
     private boolean estaRegistrado = false;
     private int contadorMensajesInvitado = 0;
+    private Set<String> usuariosBloqueados;
 
     UnCliente(Socket s, String idInvitado) throws IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
@@ -27,10 +29,7 @@ public class UnCliente implements Runnable {
         try {
             ServidorMulti.clientes.put(this.nombreUsuario, this);
             System.out.println("Se conectó un nuevo cliente: " + this.nombreUsuario);
-            salida.writeUTF("--> ¡Bienvenido! Estás conectado como " + this.nombreUsuario + ".");
-            salida.writeUTF("--> Tienes 3 mensajes para enviar como invitado.");
-            salida.writeUTF("--> Para registrarte, usa: nombre: <tu_nombre>");
-            salida.writeUTF("--> Para susurrar a alguien, usa: /w <nombre_usuario> <mensaje>");
+            salida.writeUTF("--> ¡Bienvenido! Para registrarte, usa: nombre: <tu_nombre>");
 
             while (true) {
                 String mensaje = entrada.readUTF();
@@ -40,24 +39,23 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Ya estás identificado como " + this.nombreUsuario);
                         continue;
                     }
-
                     String nuevoNombre = mensaje.substring(7).trim();
-                    if (nuevoNombre.isEmpty()) {
-                        salida.writeUTF("--> Error: El nombre no puede estar vacío.");
-                        continue;
-                    }
 
-                    if (ServidorMulti.clientes.containsKey(nuevoNombre)) {
-                        salida.writeUTF("--> Error: El nombre '" + nuevoNombre + "' ya está en uso. Elige otro.");
+                    if (DataBaseManager.usuarioExiste(nuevoNombre)) {
+                        salida.writeUTF("--> Error: El nombre '" + nuevoNombre + "' ya está registrado. Elige otro.");
                     } else {
+                        DataBaseManager.registrarUsuario(nuevoNombre);
+                        ServidorMulti.usuariosRegistrados.add(nuevoNombre);
+
                         ServidorMulti.clientes.remove(this.idInvitadoOriginal);
                         this.nombreUsuario = nuevoNombre;
                         this.estaRegistrado = true;
-                        ServidorMulti.clientes.put(this.nombreUsuario, this);
 
+                        this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
+
+                        ServidorMulti.clientes.put(this.nombreUsuario, this);
                         salida.writeUTF("--> Te has identificado correctamente como: " + this.nombreUsuario);
                         System.out.println(this.idInvitadoOriginal + " se identificó como " + this.nombreUsuario);
-
                         for (UnCliente cliente : ServidorMulti.clientes.values()) {
                             if (cliente != this) {
                                 cliente.salida.writeUTF("--> " + this.nombreUsuario + " se ha unido al chat.");
@@ -65,44 +63,41 @@ public class UnCliente implements Runnable {
                         }
                     }
                 }
-                else if (mensaje.startsWith("/w ")) {
+                else if (mensaje.startsWith("/block ")) {
                     if (!estaRegistrado) {
-                        salida.writeUTF("--> Debes estar registrado para enviar susurros. Usa: nombre: <tu_nombre>");
+                        salida.writeUTF("--> Debes estar registrado para bloquear usuarios.");
                         continue;
                     }
-
-                    String[] partes = mensaje.split(" ", 3);
-                    if (partes.length < 3) {
-                        salida.writeUTF("--> Uso incorrecto. El formato es: /w <nombre_usuario> <mensaje>");
-                        continue;
-                    }
-
-                    String destinatarioNombre = partes[1];
-                    String mensajeSusurro = partes[2];
-                    UnCliente destinatario = ServidorMulti.clientes.get(destinatarioNombre);
-
-                    if (destinatario != null) {
-                        if (destinatario == this) {
-                            salida.writeUTF("--> No puedes susurrarte a ti mismo.");
-                            continue;
-                        }
-                        String mensajeParaDestinatario = this.nombreUsuario + " (te susurra): " + mensajeSusurro;
-                        destinatario.salida.writeUTF(mensajeParaDestinatario);
-
-
-                        String confirmacionParaRemitente = "(Le susurras a " + destinatarioNombre + "): " + mensajeSusurro;
-                        this.salida.writeUTF(confirmacionParaRemitente);
-
+                    String usuarioABloquear = mensaje.substring(7).trim();
+                    if (!DataBaseManager.usuarioExiste(usuarioABloquear)) {
+                        salida.writeUTF("--> El usuario '" + usuarioABloquear + "' no está registrado.");
+                    } else if (this.usuariosBloqueados.contains(usuarioABloquear)) {
+                        salida.writeUTF("--> Ya tienes a '" + usuarioABloquear + "' en tu lista de bloqueados.");
                     } else {
-                        salida.writeUTF("--> Usuario '" + destinatarioNombre + "' no encontrado o no conectado.");
+                        DataBaseManager.bloquearUsuario(this.nombreUsuario, usuarioABloquear);
+                        this.usuariosBloqueados.add(usuarioABloquear);
+                        salida.writeUTF("--> Has bloqueado a '" + usuarioABloquear + "'.");
                     }
                 }
-
+                else if (mensaje.startsWith("/unblock ")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Debes estar registrado para desbloquear usuarios.");
+                        continue;
+                    }
+                    String usuarioADesbloquear = mensaje.substring(9).trim();
+                    if (!this.usuariosBloqueados.contains(usuarioADesbloquear)) {
+                        salida.writeUTF("--> No tienes a '" + usuarioADesbloquear + "' en tu lista de bloqueados.");
+                    } else {
+                        DataBaseManager.desbloquearUsuario(this.nombreUsuario, usuarioADesbloquear);
+                        this.usuariosBloqueados.remove(usuarioADesbloquear);
+                        salida.writeUTF("--> Has desbloqueado a '" + usuarioADesbloquear + "'.");
+                    }
+                }
                 else {
                     if (estaRegistrado) {
                         String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
                         for (UnCliente cliente : ServidorMulti.clientes.values()) {
-                            if (cliente != this) {
+                            if (cliente != this && !cliente.usuariosBloqueados.contains(this.nombreUsuario)) {
                                 cliente.salida.writeUTF(mensajeConRemitente);
                             }
                         }
@@ -114,9 +109,6 @@ public class UnCliente implements Runnable {
                                 if (cliente != this) {
                                     cliente.salida.writeUTF(mensajeInvitado);
                                 }
-                            }
-                            if(contadorMensajesInvitado == 3) {
-                                salida.writeUTF("--> Has agotado tus mensajes de invitado. Usa nombre: <tu_nombre> para continuar.");
                             }
                         } else {
                             salida.writeUTF("--> Límite de mensajes alcanzado. Debes identificarte para chatear.");
