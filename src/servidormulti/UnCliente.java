@@ -24,11 +24,11 @@ public class UnCliente implements Runnable {
         this.nombreUsuario = idInvitado;
     }
 
-    // Este método es clave. Se llama después de un registro o login exitoso.
+
     private void finalizarAutenticacion(String nombreExitoso) throws IOException {
         ServidorMulti.clientes.remove(this.idInvitadoOriginal);
 
-        // Actualizamos los datos de esta conexión con el nombre real
+
         this.nombreUsuario = nombreExitoso;
         this.estaRegistrado = true;
         this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
