@@ -24,16 +24,21 @@ public class UnCliente implements Runnable {
         this.nombreUsuario = idInvitado;
     }
 
+    // Este método es clave. Se llama después de un registro o login exitoso.
     private void finalizarAutenticacion(String nombreExitoso) throws IOException {
         ServidorMulti.clientes.remove(this.idInvitadoOriginal);
+
+        // Actualizamos los datos de esta conexión con el nombre real
         this.nombreUsuario = nombreExitoso;
         this.estaRegistrado = true;
         this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
 
         ServidorMulti.clientes.put(this.nombreUsuario, this);
+
         salida.writeUTF("--> ¡Autenticación exitosa! Bienvenido, " + this.nombreUsuario);
         System.out.println(this.idInvitadoOriginal + " se ha identificado como " + this.nombreUsuario);
 
+        // Anunciamos la conexión a los demás usuarios
         for (UnCliente cliente : ServidorMulti.clientes.values()) {
             if (cliente != this) {
                 cliente.salida.writeUTF("--> " + this.nombreUsuario + " se ha unido al chat.");
@@ -44,6 +49,7 @@ public class UnCliente implements Runnable {
     @Override
     public void run() {
         try {
+            // Se conecta inicialmente como invitado
             ServidorMulti.clientes.put(this.nombreUsuario, this);
             System.out.println("Se conectó un nuevo cliente: " + this.nombreUsuario);
             salida.writeUTF("--> ¡Bienvenido! Usa el menú del cliente para registrarte o iniciar sesión.");
@@ -51,7 +57,8 @@ public class UnCliente implements Runnable {
             while (true) {
                 String mensaje = entrada.readUTF();
 
-                if (mensaje.startsWith("nombre: ")) { // Registrar
+                // Comando para registrar
+                if (mensaje.startsWith("nombre: ")) {
                     if (estaRegistrado) { continue; }
                     String[] partes = mensaje.substring(7).trim().split(" ", 2);
                     if (partes.length < 2) {
@@ -64,12 +71,17 @@ public class UnCliente implements Runnable {
                     if (DataBaseManager.usuarioExiste(nuevoNombre)) {
                         salida.writeUTF("--> Error: El nombre '" + nuevoNombre + "' ya está registrado.");
                     } else {
+                        // Guarda el nuevo usuario en la base de datos
                         DataBaseManager.registrarUsuario(nuevoNombre, password);
                         ServidorMulti.usuariosRegistrados.add(nuevoNombre);
-                        salida.writeUTF("--> ¡Registro exitoso! Ahora inicia sesión con tu nueva cuenta.");
+                        salida.writeUTF("--> ¡Registro exitoso! Iniciando sesión automáticamente...");
+
+                        // Inicia sesión automáticamente después de registrarse.
+                        finalizarAutenticacion(nuevoNombre);
                     }
                 }
-                else if (mensaje.startsWith("/login ")) { // Iniciar sesión
+                // Comando para iniciar sesión
+                else if (mensaje.startsWith("/login ")) {
                     if (estaRegistrado) { continue; }
                     String[] partes = mensaje.substring(7).trim().split(" ", 2);
                     if (partes.length < 2) {
@@ -90,8 +102,8 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Error: Nombre de usuario o contraseña incorrectos.");
                     }
                 }
-                // --- ¡LÓGICA CORREGIDA Y RESTAURADA! ---
-                else if (mensaje.equals("/listusers")) { // Ver usuarios
+
+                else if (mensaje.equals("/listusers")) {
                     if (ServidorMulti.usuariosRegistrados.isEmpty()) {
                         salida.writeUTF("--> Aún no hay usuarios registrados en el servidor.");
                     } else {
@@ -106,7 +118,7 @@ public class UnCliente implements Runnable {
                         salida.writeUTF(listaUsuarios.toString());
                     }
                 }
-                else if (mensaje.startsWith("/w ")) { // Susurrar
+                else if (mensaje.startsWith("/w ")) {
                     if (!estaRegistrado) {
                         salida.writeUTF("--> Debes iniciar sesión para enviar susurros."); continue;
                     }
@@ -129,38 +141,7 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Usuario '" + destinatarioNombre + "' no está conectado.");
                     }
                 }
-                else if (mensaje.startsWith("/block ")) { // Bloquear
-                    if (!estaRegistrado) { salida.writeUTF("--> Debes iniciar sesión para bloquear."); continue; }
-                    String usuarioABloquear = mensaje.substring(7).trim();
-                    if (!DataBaseManager.usuarioExiste(usuarioABloquear)) {
-                        salida.writeUTF("--> El usuario '" + usuarioABloquear + "' no está registrado.");
-                    } else if (this.usuariosBloqueados.contains(usuarioABloquear)) {
-                        salida.writeUTF("--> Ya tienes a '" + usuarioABloquear + "' bloqueado.");
-                    } else {
-                        DataBaseManager.bloquearUsuario(this.nombreUsuario, usuarioABloquear);
-                        this.usuariosBloqueados.add(usuarioABloquear);
-                        salida.writeUTF("--> Has bloqueado a '" + usuarioABloquear + "'.");
-                    }
-                }
-                else if (mensaje.startsWith("/unblock ")) { // Desbloquear
-                    if (!estaRegistrado) { salida.writeUTF("--> Debes iniciar sesión para desbloquear."); continue; }
-                    String usuarioADesbloquear = mensaje.substring(9).trim();
-                    if (!this.usuariosBloqueados.contains(usuarioADesbloquear)) {
-                        salida.writeUTF("--> No tienes a '" + usuarioADesbloquear + "' en tu lista de bloqueados.");
-                    } else {
-                        DataBaseManager.desbloquearUsuario(this.nombreUsuario, usuarioADesbloquear);
-                        this.usuariosBloqueados.remove(usuarioADesbloquear);
-                        salida.writeUTF("--> Has desbloqueado a '" + usuarioADesbloquear + "'.");
-                    }
-                }
-                else if (mensaje.equals("/blockedlist")) { // Ver lista de bloqueados
-                    if (!estaRegistrado) { salida.writeUTF("--> Debes iniciar sesión para ver tu lista."); continue; }
-                    if (this.usuariosBloqueados.isEmpty()) {
-                        salida.writeUTF("--> Tu lista de bloqueados está vacía.");
-                    } else {
-                        salida.writeUTF("--> Usuarios bloqueados: " + String.join(", ", this.usuariosBloqueados));
-                    }
-                }
+
                 else { // Mensaje público
                     if (estaRegistrado) {
                         String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
