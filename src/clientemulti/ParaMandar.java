@@ -23,7 +23,8 @@ public class ParaMandar implements Runnable {
         System.out.println("4. Bloquear usuario");
         System.out.println("5. Desbloquear usuario");
         System.out.println("6. Ver mi lista de bloqueados");
-        System.out.println("7. Registrarme o identificarme");
+        System.out.println("7. Registrar una nueva cuenta");
+        System.out.println("8. Iniciar sesión (Login)");
         System.out.print("Elige una opción: ");
     }
 
@@ -33,41 +34,50 @@ public class ParaMandar implements Runnable {
             mostrarMenu();
             try {
                 String opcion = teclado.readLine();
-                if (opcion == null) break; // Termina si la conexión se cierra
+                if (opcion == null) break;
 
                 switch (opcion.trim()) {
-                    case "1":
+                    case "1": // Enviar mensaje a todos
                         System.out.print("Escribe tu mensaje público: ");
                         String mensajePublico = teclado.readLine();
                         enviarMensaje(mensajePublico);
                         break;
-                    case "2":
+                    case "2": // Enviar susurro
                         System.out.print("¿A quién quieres susurrar?: ");
                         String destinatario = teclado.readLine();
                         System.out.print("Escribe tu susurro: ");
                         String mensajePrivado = teclado.readLine();
                         enviarMensaje("/w " + destinatario + " " + mensajePrivado);
                         break;
-                    case "3":
+                    case "3": // Ver lista de usuarios
                         enviarMensaje("/listusers");
                         break;
-                    case "4":
+                    case "4": // Bloquear usuario
                         System.out.print("¿A quién quieres bloquear?: ");
                         String usuarioABloquear = teclado.readLine();
                         enviarMensaje("/block " + usuarioABloquear);
                         break;
-                    case "5":
+                    case "5": // Desbloquear usuario
                         System.out.print("¿A quién quieres desbloquear?: ");
                         String usuarioADesbloquear = teclado.readLine();
                         enviarMensaje("/unblock " + usuarioADesbloquear);
                         break;
-                    case "6":
+                    case "6": // Ver lista de bloqueados
                         enviarMensaje("/blockedlist");
                         break;
-                    case "7":
-                        System.out.print("Escribe tu nombre de usuario para registrarte: ");
-                        String nombre = teclado.readLine();
-                        enviarMensaje("nombre: " + nombre);
+                    case "7": // Registrar nueva cuenta
+                        System.out.print("Elige un nombre de usuario nuevo: ");
+                        String nuevoNombre = teclado.readLine();
+                        System.out.print("Elige una contraseña: ");
+                        String nuevaPass = teclado.readLine();
+                        enviarMensaje("nombre: " + nuevoNombre + " " + nuevaPass);
+                        break;
+                    case "8": // Iniciar sesión
+                        System.out.print("Tu nombre de usuario: ");
+                        String nombreLogin = teclado.readLine();
+                        System.out.print("Tu contraseña: ");
+                        String passLogin = teclado.readLine();
+                        enviarMensaje("/login " + nombreLogin + " " + passLogin);
                         break;
                     default:
                         System.out.println("--> Opción no válida. Por favor, elige un número del menú.");
@@ -80,7 +90,6 @@ public class ParaMandar implements Runnable {
         }
     }
 
-    // Método auxiliar para no enviar mensajes vacíos
     private void enviarMensaje(String mensaje) throws IOException {
         if (mensaje != null && !mensaje.trim().isEmpty()) {
             salida.writeUTF(mensaje);
