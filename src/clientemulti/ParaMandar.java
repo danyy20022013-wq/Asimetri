@@ -14,10 +14,9 @@ public class ParaMandar implements Runnable {
         this.salida = new DataOutputStream(s.getOutputStream());
         this.teclado = new BufferedReader(new InputStreamReader(System.in));
     }
-
     private void mostrarMenu() {
         System.out.println("\n--- MENÚ DE ACCIONES ---");
-        System.out.println("1. Enviar mensaje a todos");
+        System.out.println("1. Enviar mensaje o comando (juego)");
         System.out.println("2. Enviar susurro (mensaje privado)");
         System.out.println("3. Ver lista de usuarios");
         System.out.println("4. Bloquear usuario");
@@ -25,9 +24,9 @@ public class ParaMandar implements Runnable {
         System.out.println("6. Ver mi lista de bloqueados");
         System.out.println("7. Registrar una nueva cuenta");
         System.out.println("8. Iniciar sesión (Login)");
+        System.out.println("9. Invitar a jugar al Gato");
         System.out.print("Elige una opción: ");
     }
-
     @Override
     public void run() {
         while (true) {
@@ -35,49 +34,53 @@ public class ParaMandar implements Runnable {
             try {
                 String opcion = teclado.readLine();
                 if (opcion == null) break;
-
                 switch (opcion.trim()) {
-                    case "1": // Enviar mensaje a todos
-                        System.out.print("Escribe tu mensaje público: ");
-                        String mensajePublico = teclado.readLine();
-                        enviarMensaje(mensajePublico);
+                    case "1":
+                        System.out.print("Escribe tu mensaje o comando (/aceptar, /rechazar, /move 0 1, ...): ");
+                        String mensaje = teclado.readLine();
+                        enviarMensaje(mensaje);
                         break;
-                    case "2": // Enviar susurro
+                    case "2":
                         System.out.print("¿A quién quieres susurrar?: ");
                         String destinatario = teclado.readLine();
                         System.out.print("Escribe tu susurro: ");
                         String mensajePrivado = teclado.readLine();
                         enviarMensaje("/w " + destinatario + " " + mensajePrivado);
                         break;
-                    case "3": // Ver lista de usuarios
+                    case "3":
                         enviarMensaje("/listusers");
                         break;
-                    case "4": // Bloquear usuario
+                    case "4":
                         System.out.print("¿A quién quieres bloquear?: ");
                         String usuarioABloquear = teclado.readLine();
                         enviarMensaje("/block " + usuarioABloquear);
                         break;
-                    case "5": // Desbloquear usuario
+                    case "5":
                         System.out.print("¿A quién quieres desbloquear?: ");
                         String usuarioADesbloquear = teclado.readLine();
                         enviarMensaje("/unblock " + usuarioADesbloquear);
                         break;
-                    case "6": // Ver lista de bloqueados
+                    case "6":
                         enviarMensaje("/blockedlist");
                         break;
-                    case "7": // Registrar nueva cuenta
+                    case "7":
                         System.out.print("Elige un nombre de usuario nuevo: ");
                         String nuevoNombre = teclado.readLine();
                         System.out.print("Elige una contraseña: ");
                         String nuevaPass = teclado.readLine();
                         enviarMensaje("nombre: " + nuevoNombre + " " + nuevaPass);
                         break;
-                    case "8": // Iniciar sesión
+                    case "8":
                         System.out.print("Tu nombre de usuario: ");
                         String nombreLogin = teclado.readLine();
                         System.out.print("Tu contraseña: ");
                         String passLogin = teclado.readLine();
                         enviarMensaje("/login " + nombreLogin + " " + passLogin);
+                        break;
+                    case "9":
+                        System.out.print("¿A quién quieres invitar a jugar?: ");
+                        String oponente = teclado.readLine();
+                        enviarMensaje("/jugar " + oponente);
                         break;
                     default:
                         System.out.println("--> Opción no válida. Por favor, elige un número del menú.");
@@ -89,7 +92,6 @@ public class ParaMandar implements Runnable {
             }
         }
     }
-
     private void enviarMensaje(String mensaje) throws IOException {
         if (mensaje != null && !mensaje.trim().isEmpty()) {
             salida.writeUTF(mensaje);

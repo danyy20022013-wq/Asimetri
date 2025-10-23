@@ -1,5 +1,5 @@
 package servidormulti;
-
+import servidormulti.juego.PartidaGato;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -8,7 +8,7 @@ import java.util.Set;
 
 public class UnCliente implements Runnable {
 
-    final DataOutputStream salida;
+    public final DataOutputStream salida;
     final DataInputStream entrada;
 
     private String nombreUsuario;
@@ -16,6 +16,16 @@ public class UnCliente implements Runnable {
     private boolean estaRegistrado = false;
     private int contadorMensajesInvitado = 0;
     private Set<String> usuariosBloqueados;
+
+    private boolean estaEnJuego = false;
+
+    public String getNombreUsuario() {
+        return nombreUsuario;
+    }
+
+    public void setEstaEnJuego(boolean enJuego) {
+        this.estaEnJuego = enJuego;
+    }
 
     UnCliente(Socket s, String idInvitado) throws IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
@@ -29,6 +39,7 @@ public class UnCliente implements Runnable {
 
         this.nombreUsuario = nombreExitoso;
         this.estaRegistrado = true;
+        this.estaEnJuego = false;
         this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
 
         ServidorMulti.clientes.put(this.nombreUsuario, this);
@@ -53,7 +64,6 @@ public class UnCliente implements Runnable {
             while (true) {
                 String mensaje = entrada.readUTF();
 
-
                 if (mensaje.startsWith("nombre: ")) {
                     if (estaRegistrado) { continue; }
                     String[] partes = mensaje.substring(7).trim().split(" ", 2);
@@ -72,6 +82,7 @@ public class UnCliente implements Runnable {
                         finalizarAutenticacion(nuevoNombre);
                     }
                 }
+
                 else if (mensaje.startsWith("/login ")) {
                     if (estaRegistrado) { continue; }
                     String[] partes = mensaje.substring(7).trim().split(" ", 2);
@@ -92,6 +103,100 @@ public class UnCliente implements Runnable {
                     }
                 }
 
+                else if (mensaje.startsWith("/jugar ")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Debes iniciar sesión para jugar."); continue;
+                    }
+                    if (estaEnJuego) {
+                        salida.writeUTF("--> Ya estás en una partida."); continue;
+                    }
+                    String oponenteNombre = mensaje.substring(7).trim();
+                    UnCliente oponente = ServidorMulti.clientes.get(oponenteNombre);
+
+                    if (oponente == null) {
+                        salida.writeUTF("--> El usuario '" + oponenteNombre + "' no está conectado."); continue;
+                    }
+                    if (oponente == this) {
+                        salida.writeUTF("--> No puedes jugar contigo mismo."); continue;
+                    }
+                    if (oponente.estaEnJuego) {
+                        salida.writeUTF("--> '" + oponenteNombre + "' ya está en una partida."); continue;
+                    }
+
+                    if (this.usuariosBloqueados.contains(oponenteNombre)) {
+                        salida.writeUTF("--> No puedes invitar a '" + oponenteNombre + "' porque lo tienes bloqueado."); continue;
+                    }
+                    if (oponente.usuariosBloqueados.contains(this.nombreUsuario)) {
+                        salida.writeUTF("--> No puedes invitar a '" + oponenteNombre + "' (te ha bloqueado)."); continue;
+                    }
+
+
+                    ServidorMulti.invitacionesPendientes.put(oponenteNombre, this.nombreUsuario);
+                    oponente.salida.writeUTF("--> ¡" + this.nombreUsuario + " te ha invitado a jugar al Gato!");
+                    oponente.salida.writeUTF("--> Escribe /aceptar o /rechazar (puedes usar la opción 1 del menú).");
+                    salida.writeUTF("--> Invitación enviada a " + oponenteNombre + ".");
+                }
+                else if (mensaje.equals("/aceptar")) {
+                    if (estaEnJuego) {
+                        salida.writeUTF("--> Ya estás en una partida."); continue;
+                    }
+                    String invitadorNombre = ServidorMulti.invitacionesPendientes.get(this.nombreUsuario);
+                    if (invitadorNombre == null) {
+                        salida.writeUTF("--> No tienes invitaciones pendientes."); continue;
+                    }
+                    UnCliente invitador = ServidorMulti.clientes.get(invitadorNombre);
+                    if (invitador == null || invitador.estaEnJuego) {
+                        salida.writeUTF("--> El jugador que te invitó ya no está disponible."); continue;
+                    }
+
+                    ServidorMulti.invitacionesPendientes.remove(this.nombreUsuario);
+                    this.estaEnJuego = true;
+                    invitador.estaEnJuego = true;
+                    PartidaGato nuevaPartida = new PartidaGato(invitador, this);
+                    ServidorMulti.partidasActivas.put(invitadorNombre, nuevaPartida);
+                    ServidorMulti.partidasActivas.put(this.nombreUsuario, nuevaPartida);
+                    nuevaPartida.iniciarPartida();
+                }
+                else if (mensaje.equals("/rechazar")) {
+                    String invitadorNombre = ServidorMulti.invitacionesPendientes.remove(this.nombreUsuario);
+                    if (invitadorNombre != null) {
+                        UnCliente invitador = ServidorMulti.clientes.get(invitadorNombre);
+                        if(invitador != null) {
+                            invitador.salida.writeUTF("--> " + this.nombreUsuario + " ha rechazado tu invitación.");
+                        }
+                        salida.writeUTF("--> Has rechazado la invitación.");
+                    }
+                }
+                else if (mensaje.startsWith("/move ")) {
+                    if (!estaEnJuego) {
+                        salida.writeUTF("--> No estás en una partida."); continue;
+                    }
+                    PartidaGato partida = ServidorMulti.partidasActivas.get(this.nombreUsuario);
+                    try {
+                        String[] coords = mensaje.substring(6).split(" ");
+                        int fila = Integer.parseInt(coords[0]);
+                        int col = Integer.parseInt(coords[1]);
+                        partida.recibirMovimiento(this, fila, col);
+                    } catch (Exception e) {
+                        salida.writeUTF("--> Movimiento inválido. Formato: /move <fila> <col>");
+                    }
+                }
+
+                else if (mensaje.equals("/listusers")) {
+                    if (ServidorMulti.usuariosRegistrados.isEmpty()) {
+                        salida.writeUTF("--> Aún no hay usuarios registrados en el servidor.");
+                    } else {
+                        StringBuilder listaUsuarios = new StringBuilder("--- Usuarios Registrados ---\n");
+                        for (String usuario : ServidorMulti.usuariosRegistrados) {
+                            if (ServidorMulti.clientes.containsKey(usuario)) {
+                                listaUsuarios.append("- ").append(usuario).append(" (Online)\n");
+                            } else {
+                                listaUsuarios.append("- ").append(usuario).append(" (Offline)\n");
+                            }
+                        }
+                        salida.writeUTF(listaUsuarios.toString());
+                    }
+                }
                 else if (mensaje.startsWith("/w ")) {
                     if (!estaRegistrado) {
                         salida.writeUTF("--> Debes iniciar sesión para enviar susurros.");
@@ -107,13 +212,10 @@ public class UnCliente implements Runnable {
                     UnCliente destinatario = ServidorMulti.clientes.get(destinatarioNombre);
 
                     if (destinatario != null) {
-
                         if (destinatario.usuariosBloqueados.contains(this.nombreUsuario)) {
-                            // Si es así, le avisa al remitente y detiene el envío.
                             salida.writeUTF("--> No puedes susurrar a " + destinatarioNombre + " (te ha bloqueado).");
-                            continue; // Detiene la ejecución aquí
+                            continue;
                         }
-
                         String msgParaDest = this.nombreUsuario + " (te susurra): " + mensajeSusurro;
                         destinatario.salida.writeUTF(msgParaDest);
                         String confirmacion = "(Le susurras a " + destinatarioNombre + "): " + mensajeSusurro;
@@ -122,8 +224,46 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Usuario '" + destinatarioNombre + "' no está conectado.");
                     }
                 }
-
+                else if (mensaje.startsWith("/block ")) {
+                    if (!estaRegistrado) { salida.writeUTF("--> Debes iniciar sesión para bloquear."); continue; }
+                    String usuarioABloquear = mensaje.substring(7).trim();
+                    if (!DataBaseManager.usuarioExiste(usuarioABloquear)) {
+                        salida.writeUTF("--> El usuario '" + usuarioABloquear + "' no está registrado.");
+                    } else if (this.usuariosBloqueados.contains(usuarioABloquear)) {
+                        salida.writeUTF("--> Ya tienes a '" + usuarioABloquear + "' bloqueado.");
+                    } else {
+                        DataBaseManager.bloquearUsuario(this.nombreUsuario, usuarioABloquear);
+                        this.usuariosBloqueados.add(usuarioABloquear);
+                        salida.writeUTF("--> Has bloqueado a '" + usuarioABloquear + "'.");
+                    }
+                }
+                else if (mensaje.startsWith("/unblock ")) {
+                    if (!estaRegistrado) { salida.writeUTF("--> Debes iniciar sesión para desbloquear."); continue; }
+                    String usuarioADesbloquear = mensaje.substring(9).trim();
+                    if (!this.usuariosBloqueados.contains(usuarioADesbloquear)) {
+                        salida.writeUTF("--> No tienes a '" + usuarioADesbloquear + "' en tu lista de bloqueados.");
+                    } else {
+                        DataBaseManager.desbloquearUsuario(this.nombreUsuario, usuarioADesbloquear);
+                        this.usuariosBloqueados.remove(usuarioADesbloquear);
+                        salida.writeUTF("--> Has desbloqueado a '" + usuarioADesbloquear + "'.");
+                    }
+                }
+                else if (mensaje.equals("/blockedlist")) {
+                    if (!estaRegistrado) { salida.writeUTF("--> Debes iniciar sesión para ver tu lista."); continue; }
+                    if (this.usuariosBloqueados.isEmpty()) {
+                        salida.writeUTF("--> Tu lista de bloqueados está vacía.");
+                    } else {
+                        salida.writeUTF("--> Usuarios bloqueados: " + String.join(", ", this.usuariosBloqueados));
+                    }
+                }
                 else {
+
+                    if (estaEnJuego) {
+                        salida.writeUTF("--> No puedes chatear mientras estás en una partida.");
+                        salida.writeUTF("--> Para jugar, usa la opción 1 y escribe: /move <fila> <col>");
+                        continue;
+                    }
+
                     if (estaRegistrado) {
                         String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
                         for (UnCliente cliente : ServidorMulti.clientes.values()) {
@@ -147,6 +287,13 @@ public class UnCliente implements Runnable {
                 }
             }
         } catch (IOException ex) {
+
+            if (this.estaEnJuego) {
+                PartidaGato partida = ServidorMulti.partidasActivas.get(this.nombreUsuario);
+                if (partida != null) {
+                    partida.abandonarPartida(this);
+                }
+            }
 
             System.out.println(this.nombreUsuario + " se ha desconectado.");
             ServidorMulti.clientes.remove(this.nombreUsuario);

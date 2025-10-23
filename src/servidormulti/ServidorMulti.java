@@ -1,5 +1,5 @@
 package servidormulti;
-
+import servidormulti.juego.PartidaGato;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -10,18 +10,16 @@ public class ServidorMulti {
 
     static HashMap<String, UnCliente> clientes = new HashMap<>();
     static Set<String> usuariosRegistrados;
-
+    static final HashMap<String, String> invitacionesPendientes = new HashMap<>();
+    public static final HashMap<String, PartidaGato> partidasActivas = new HashMap<>();
     private static int contadorInvitados = 1;
-
     public static void main(String[] args) {
         DataBaseManager.inicializar();
         usuariosRegistrados = DataBaseManager.cargarUsuariosRegistrados();
         System.out.println("Cargados " + usuariosRegistrados.size() + " usuarios registrados desde la base de datos.");
-
         int puerto = 8080;
         try (ServerSocket servidorSocket = new ServerSocket(puerto)) {
             System.out.println("Servidor iniciado en el puerto " + puerto);
-
             while (true) {
                 Socket socket = servidorSocket.accept();
                 String idInvitado = "chango-" + contadorInvitados++;
