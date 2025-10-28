@@ -32,7 +32,7 @@ public class DataBaseManager {
         }
     }
 
-    // --- ¡NUEVO! Método para validar el inicio de sesión ---
+
     public static synchronized boolean validarLogin(String nombre, String password) {
         String sql = "SELECT password FROM usuarios WHERE nombre = ?";
         try (Connection conn = DriverManager.getConnection(URL);

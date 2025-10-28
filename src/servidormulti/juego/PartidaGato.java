@@ -12,9 +12,16 @@ public class PartidaGato {
     private UnCliente turnoActual;
 
     public PartidaGato(UnCliente j1, UnCliente j2) {
-        this.jugadorX = j1;
-        this.jugadorO = j2;
         this.juego = new JuegoGato();
+        if (Math.random() > 0.5) {
+
+            this.jugadorX = j1;
+            this.jugadorO = j2;
+        } else {
+
+            this.jugadorX = j2;
+            this.jugadorO = j1;
+        }
     }
 
     private void enviarMensajeAmbos(String msg) {
@@ -27,13 +34,16 @@ public class PartidaGato {
     }
 
     public void iniciarPartida() {
-        enviarMensajeAmbos("--> ¡Partida iniciada! " + jugadorX.getNombreUsuario() + " (X) vs " + jugadorO.getNombreUsuario() + " (O)");
+        enviarMensajeAmbos("--> ¡Partida iniciada! " + jugadorX.getNombreUsuario() + " será (X) y " + jugadorO.getNombreUsuario() + " será (O)");
+
         this.turnoActual = jugadorX;
         enviarMensajeAmbos(juego.imprimirTablero());
         try {
             jugadorX.salida.writeUTF("--> Es tu turno (X).");
             jugadorO.salida.writeUTF("--> Es el turno de " + jugadorX.getNombreUsuario() + ".");
-        } catch (IOException e) {}
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public synchronized void recibirMovimiento(UnCliente remitente, int fila, int col) {
