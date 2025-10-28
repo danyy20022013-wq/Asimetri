@@ -23,7 +23,6 @@ public class DataBaseManager {
                 + " FOREIGN KEY (bloqueado) REFERENCES usuarios(nombre)"
                 + ");";
 
-
         String sqlEstadisticas = "CREATE TABLE IF NOT EXISTS estadisticas ("
                 + " nombre TEXT PRIMARY KEY NOT NULL UNIQUE,"
                 + " victorias INTEGER DEFAULT 0,"
@@ -36,30 +35,27 @@ public class DataBaseManager {
              Statement stmt = conn.createStatement()) {
             stmt.execute(sqlUsuarios);
             stmt.execute(sqlBloqueados);
-            stmt.execute(sqlEstadisticas); // <-- Ejecutar la creación
+            stmt.execute(sqlEstadisticas);
             System.out.println("Base de datos inicializada correctamente.");
         } catch (SQLException e) {
             System.out.println("Error al inicializar la base de datos: " + e.getMessage());
         }
     }
 
-    // --- MÉTODO MODIFICADO ---
     public static synchronized void registrarUsuario(String nombre, String password) {
         String sqlUsuario = "INSERT INTO usuarios(nombre, password) VALUES(?,?)";
-        // Al registrar un usuario, creamos su fila de estadísticas en 0
         String sqlStats = "INSERT INTO estadisticas(nombre, victorias, empates, derrotas) VALUES(?, 0, 0, 0)";
 
         Connection conn = null;
         try {
             conn = DriverManager.getConnection(URL);
-            conn.setAutoCommit(false); // Iniciar transacción
+            conn.setAutoCommit(false);
 
             try (PreparedStatement pstmt = conn.prepareStatement(sqlUsuario)) {
                 pstmt.setString(1, nombre);
                 pstmt.setString(2, password);
                 pstmt.executeUpdate();
             }
-
             try (PreparedStatement pstmt = conn.prepareStatement(sqlStats)) {
                 pstmt.setString(1, nombre);
                 pstmt.executeUpdate();
@@ -101,16 +97,25 @@ public class DataBaseManager {
 
     public static synchronized void registrarEmpate(String j1, String j2) {
         String sql = "UPDATE estadisticas SET empates = empates + 1 WHERE nombre = ?";
-        try (Connection conn = DriverManager.getConnection(URL)) {
-            conn.setAutoCommit(false);
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, j1);
-                pstmt.executeUpdate();
 
-                pstmt.setString(1, j2);
-                pstmt.executeUpdate();
-            }
+        // --- ¡CORRECCIÓN! Usar un batch para asegurar que ambas actualizaciones se ejecuten ---
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false);
+
+            // Añade la actualización para j1 al batch
+            pstmt.setString(1, j1);
+            pstmt.addBatch();
+
+            // Añade la actualización para j2 al batch
+            pstmt.setString(1, j2);
+            pstmt.addBatch();
+
+            // Ejecuta ambas actualizaciones juntas
+            pstmt.executeBatch();
             conn.commit();
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
