@@ -2,7 +2,6 @@ package servidormulti.juego;
 
 import servidormulti.ServidorMulti;
 import servidormulti.UnCliente;
-
 import java.io.IOException;
 
 public class PartidaGato {
@@ -13,12 +12,11 @@ public class PartidaGato {
 
     public PartidaGato(UnCliente j1, UnCliente j2) {
         this.juego = new JuegoGato();
-        if (Math.random() > 0.5) {
 
+        if (Math.random() > 0.5) {
             this.jugadorX = j1;
             this.jugadorO = j2;
         } else {
-
             this.jugadorX = j2;
             this.jugadorO = j1;
         }
@@ -29,28 +27,25 @@ public class PartidaGato {
             jugadorX.salida.writeUTF(msg);
             jugadorO.salida.writeUTF(msg);
         } catch (IOException e) {
-            System.out.println("Error al enviar mensaje de juego: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public void iniciarPartida() {
-        enviarMensajeAmbos("--> ¡Partida iniciada! " + jugadorX.getNombreUsuario() + " será (X) y " + jugadorO.getNombreUsuario() + " será (O)");
-
+        enviarMensajeAmbos("--> ¡Partida iniciada! " + jugadorX.getNombreUsuario() + " (X) vs " + jugadorO.getNombreUsuario() + " (O)");
         this.turnoActual = jugadorX;
         enviarMensajeAmbos(juego.imprimirTablero());
         try {
-            jugadorX.salida.writeUTF("--> Es tu turno (X).");
-            jugadorO.salida.writeUTF("--> Es el turno de " + jugadorX.getNombreUsuario() + ".");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            jugadorX.salida.writeUTF("--> Es tu turno (X) contra " + jugadorO.getNombreUsuario());
+            jugadorO.salida.writeUTF("--> Es el turno de " + jugadorX.getNombreUsuario() + " (X)");
+        } catch (IOException e) { e.printStackTrace(); }
     }
 
     public synchronized void recibirMovimiento(UnCliente remitente, int fila, int col) {
         if (remitente != turnoActual) {
             try {
-                remitente.salida.writeUTF("--> No es tu turno.");
-            } catch (IOException e) {}
+                remitente.salida.writeUTF("--> No es tu turno en esta partida.");
+            } catch (IOException e) { e.printStackTrace(); }
             return;
         }
 
@@ -58,7 +53,7 @@ public class PartidaGato {
         if (!juego.hacerMovimiento(fila, col, simbolo)) {
             try {
                 remitente.salida.writeUTF("--> Movimiento inválido. Intenta de nuevo.");
-            } catch (IOException e) {}
+            } catch (IOException e) { e.printStackTrace(); }
             return;
         }
 
@@ -71,26 +66,26 @@ public class PartidaGato {
             enviarMensajeAmbos("--> ¡Juego terminado! Es un empate (gato).");
             terminarPartida();
         } else {
-
             turnoActual = (turnoActual == jugadorX) ? jugadorO : jugadorX;
             try {
-                turnoActual.salida.writeUTF("--> Es tu turno ("+ ((turnoActual == jugadorX) ? 'X' : 'O') +").");
-            } catch (IOException e) {}
+
+                String oponente = (turnoActual == jugadorX) ? jugadorO.getNombreUsuario() : jugadorX.getNombreUsuario();
+                turnoActual.salida.writeUTF("--> Es tu turno ("+ ((turnoActual == jugadorX) ? 'X' : 'O') +") contra " + oponente);
+            } catch (IOException e) { e.printStackTrace(); }
         }
     }
 
     private void terminarPartida() {
-        jugadorX.setEstaEnJuego(false);
-        jugadorO.setEstaEnJuego(false);
-        ServidorMulti.partidasActivas.remove(jugadorX.getNombreUsuario());
-        ServidorMulti.partidasActivas.remove(jugadorO.getNombreUsuario());
+
+        jugadorX.removerPartida(jugadorO.getNombreUsuario());
+        jugadorO.removerPartida(jugadorX.getNombreUsuario());
     }
 
     public void abandonarPartida(UnCliente jugadorQueAbandona) {
         UnCliente otroJugador = (jugadorQueAbandona == jugadorX) ? jugadorO : jugadorX;
         try {
-            otroJugador.salida.writeUTF("--> " + jugadorQueAbandona.getNombreUsuario() + " se ha desconectado. ¡Tú ganas!");
-        } catch (IOException e) {}
+            otroJugador.salida.writeUTF("--> " + jugadorQueAbandona.getNombreUsuario() + " se ha desconectado de su partida. ¡Tú ganas!");
+        } catch (IOException e) { e.printStackTrace(); }
         terminarPartida();
     }
 }

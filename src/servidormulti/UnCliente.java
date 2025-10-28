@@ -1,9 +1,11 @@
 package servidormulti;
+
 import servidormulti.juego.PartidaGato;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Set;
 
 public class UnCliente implements Runnable {
@@ -17,15 +19,7 @@ public class UnCliente implements Runnable {
     private int contadorMensajesInvitado = 0;
     private Set<String> usuariosBloqueados;
 
-    private boolean estaEnJuego = false;
-
-    public String getNombreUsuario() {
-        return nombreUsuario;
-    }
-
-    public void setEstaEnJuego(boolean enJuego) {
-        this.estaEnJuego = enJuego;
-    }
+    private final HashMap<String, PartidaGato> partidasEnJuego = new HashMap<>();
 
     UnCliente(Socket s, String idInvitado) throws IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
@@ -34,19 +28,27 @@ public class UnCliente implements Runnable {
         this.nombreUsuario = idInvitado;
     }
 
+    public String getNombreUsuario() {
+        return nombreUsuario;
+    }
+
+    public void agregarPartida(String oponente, PartidaGato partida) {
+        this.partidasEnJuego.put(oponente, partida);
+    }
+
+    public void removerPartida(String oponente) {
+        this.partidasEnJuego.remove(oponente);
+    }
+
     private void finalizarAutenticacion(String nombreExitoso) throws IOException {
         ServidorMulti.clientes.remove(this.idInvitadoOriginal);
-
         this.nombreUsuario = nombreExitoso;
         this.estaRegistrado = true;
-        this.estaEnJuego = false;
+
         this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
-
         ServidorMulti.clientes.put(this.nombreUsuario, this);
-
         salida.writeUTF("--> ¡Autenticación exitosa! Bienvenido, " + this.nombreUsuario);
         System.out.println(this.idInvitadoOriginal + " se ha identificado como " + this.nombreUsuario);
-
         for (UnCliente cliente : ServidorMulti.clientes.values()) {
             if (cliente != this) {
                 cliente.salida.writeUTF("--> " + this.nombreUsuario + " se ha unido al chat.");
@@ -107,20 +109,18 @@ public class UnCliente implements Runnable {
                     if (!estaRegistrado) {
                         salida.writeUTF("--> Debes iniciar sesión para jugar."); continue;
                     }
-                    if (estaEnJuego) {
-                        salida.writeUTF("--> Ya estás en una partida."); continue;
-                    }
                     String oponenteNombre = mensaje.substring(7).trim();
                     UnCliente oponente = ServidorMulti.clientes.get(oponenteNombre);
+
+                    if (this.partidasEnJuego.containsKey(oponenteNombre)) {
+                        salida.writeUTF("--> Ya tienes una partida activa con " + oponenteNombre + "."); continue;
+                    }
 
                     if (oponente == null) {
                         salida.writeUTF("--> El usuario '" + oponenteNombre + "' no está conectado."); continue;
                     }
                     if (oponente == this) {
                         salida.writeUTF("--> No puedes jugar contigo mismo."); continue;
-                    }
-                    if (oponente.estaEnJuego) {
-                        salida.writeUTF("--> '" + oponenteNombre + "' ya está en una partida."); continue;
                     }
 
                     if (this.usuariosBloqueados.contains(oponenteNombre)) {
@@ -130,55 +130,79 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> No puedes invitar a '" + oponenteNombre + "' (te ha bloqueado)."); continue;
                     }
 
-
                     ServidorMulti.invitacionesPendientes.put(oponenteNombre, this.nombreUsuario);
                     oponente.salida.writeUTF("--> ¡" + this.nombreUsuario + " te ha invitado a jugar al Gato!");
-                    oponente.salida.writeUTF("--> Escribe /aceptar o /rechazar (puedes usar la opción 1 del menú).");
+                    oponente.salida.writeUTF("--> Usa la opción 10 del menú para aceptar o rechazar.");
                     salida.writeUTF("--> Invitación enviada a " + oponenteNombre + ".");
                 }
-                else if (mensaje.equals("/aceptar")) {
-                    if (estaEnJuego) {
-                        salida.writeUTF("--> Ya estás en una partida."); continue;
+                else if (mensaje.startsWith("/aceptar ")) {
+                    String invitadorNombre = mensaje.substring(9).trim();
+                    String invitacionReal = ServidorMulti.invitacionesPendientes.get(this.nombreUsuario);
+
+                    if (invitacionReal == null || !invitacionReal.equals(invitadorNombre)) {
+                        salida.writeUTF("--> No tienes una invitación pendiente de " + invitadorNombre + "."); continue;
                     }
-                    String invitadorNombre = ServidorMulti.invitacionesPendientes.get(this.nombreUsuario);
-                    if (invitadorNombre == null) {
-                        salida.writeUTF("--> No tienes invitaciones pendientes."); continue;
-                    }
+
                     UnCliente invitador = ServidorMulti.clientes.get(invitadorNombre);
-                    if (invitador == null || invitador.estaEnJuego) {
+                    if (invitador == null) {
                         salida.writeUTF("--> El jugador que te invitó ya no está disponible."); continue;
                     }
 
                     ServidorMulti.invitacionesPendientes.remove(this.nombreUsuario);
-                    this.estaEnJuego = true;
-                    invitador.estaEnJuego = true;
                     PartidaGato nuevaPartida = new PartidaGato(invitador, this);
-                    ServidorMulti.partidasActivas.put(invitadorNombre, nuevaPartida);
-                    ServidorMulti.partidasActivas.put(this.nombreUsuario, nuevaPartida);
+
+                    invitador.agregarPartida(this.nombreUsuario, nuevaPartida);
+                    this.agregarPartida(invitadorNombre, nuevaPartida);
+
                     nuevaPartida.iniciarPartida();
                 }
-                else if (mensaje.equals("/rechazar")) {
-                    String invitadorNombre = ServidorMulti.invitacionesPendientes.remove(this.nombreUsuario);
-                    if (invitadorNombre != null) {
+
+                else if (mensaje.startsWith("/rechazar ")) {
+                    String invitadorNombre = mensaje.substring(10).trim();
+                    String invitacionReal = ServidorMulti.invitacionesPendientes.get(this.nombreUsuario);
+
+                    if (invitacionReal != null && invitacionReal.equals(invitadorNombre)) {
+                        ServidorMulti.invitacionesPendientes.remove(this.nombreUsuario);
                         UnCliente invitador = ServidorMulti.clientes.get(invitadorNombre);
                         if(invitador != null) {
                             invitador.salida.writeUTF("--> " + this.nombreUsuario + " ha rechazado tu invitación.");
                         }
-                        salida.writeUTF("--> Has rechazado la invitación.");
+                        salida.writeUTF("--> Has rechazado la invitación de " + invitadorNombre + ".");
+                    } else {
+                        salida.writeUTF("--> No tienes una invitación pendiente de " + invitadorNombre + ".");
                     }
                 }
+
                 else if (mensaje.startsWith("/move ")) {
-                    if (!estaEnJuego) {
-                        salida.writeUTF("--> No estás en una partida."); continue;
-                    }
-                    PartidaGato partida = ServidorMulti.partidasActivas.get(this.nombreUsuario);
                     try {
-                        String[] coords = mensaje.substring(6).split(" ");
-                        int fila = Integer.parseInt(coords[0]);
-                        int col = Integer.parseInt(coords[1]);
+
+                        String[] partes = mensaje.substring(6).split(" ");
+                        if (partes.length < 3) throw new Exception();
+
+                        String oponenteNombre = partes[0];
+                        int fila = Integer.parseInt(partes[1]);
+                        int col = Integer.parseInt(partes[2]);
+
+                        PartidaGato partida = this.partidasEnJuego.get(oponenteNombre);
+                        if (partida == null) {
+                            salida.writeUTF("--> No estás jugando contra " + oponenteNombre + ".");
+                            continue;
+                        }
+
                         partida.recibirMovimiento(this, fila, col);
                     } catch (Exception e) {
-                        salida.writeUTF("--> Movimiento inválido. Formato: /move <fila> <col>");
+                        salida.writeUTF("--> Movimiento inválido. Formato: /move <oponente> <fila> <col>");
+                    }
+                }
+
+                else if (mensaje.equals("/partidas")) {
+                    if (this.partidasEnJuego.isEmpty()) {
+                        salida.writeUTF("--> No estás en ninguna partida.");
+                    } else {
+                        salida.writeUTF("--- Tus Partidas Activas ---");
+                        for (String oponente : this.partidasEnJuego.keySet()) {
+                            salida.writeUTF("- Jugando contra: " + oponente);
+                        }
                     }
                 }
 
@@ -256,13 +280,8 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Usuarios bloqueados: " + String.join(", ", this.usuariosBloqueados));
                     }
                 }
-                else {
 
-                    if (estaEnJuego) {
-                        salida.writeUTF("--> No puedes chatear mientras estás en una partida.");
-                        salida.writeUTF("--> Para jugar, usa la opción 1 y escribe: /move <fila> <col>");
-                        continue;
-                    }
+                else {
 
                     if (estaRegistrado) {
                         String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
@@ -272,6 +291,7 @@ public class UnCliente implements Runnable {
                             }
                         }
                     } else {
+
                         if (contadorMensajesInvitado < 3) {
                             contadorMensajesInvitado++;
                             String mensajeInvitado = this.nombreUsuario + " (invitado): " + mensaje;
@@ -288,10 +308,14 @@ public class UnCliente implements Runnable {
             }
         } catch (IOException ex) {
 
-            if (this.estaEnJuego) {
-                PartidaGato partida = ServidorMulti.partidasActivas.get(this.nombreUsuario);
-                if (partida != null) {
-                    partida.abandonarPartida(this);
+            if (!this.partidasEnJuego.isEmpty()) {
+
+                Set<String> oponentes = Set.copyOf(this.partidasEnJuego.keySet());
+                for (String oponente : oponentes) {
+                    PartidaGato partida = this.partidasEnJuego.get(oponente);
+                    if (partida != null) {
+                        partida.abandonarPartida(this);
+                    }
                 }
             }
 
