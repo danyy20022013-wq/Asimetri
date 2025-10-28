@@ -1,6 +1,6 @@
 package servidormulti.juego;
 
-import servidormulti.ServidorMulti;
+import servidormulti.DataBaseManager;
 import servidormulti.UnCliente;
 import java.io.IOException;
 
@@ -61,14 +61,22 @@ public class PartidaGato {
 
         if (juego.getGanador() != ' ') {
             enviarMensajeAmbos("--> ¡Juego terminado! El ganador es " + remitente.getNombreUsuario() + " (" + simbolo + ")");
+
+            UnCliente perdedor = (remitente == jugadorX) ? jugadorO : jugadorX;
+            DataBaseManager.registrarResultado(remitente.getNombreUsuario(), perdedor.getNombreUsuario());
+
             terminarPartida();
+
         } else if (juego.estaLleno()) {
             enviarMensajeAmbos("--> ¡Juego terminado! Es un empate (gato).");
+
+            DataBaseManager.registrarEmpate(jugadorX.getNombreUsuario(), jugadorO.getNombreUsuario());
+
             terminarPartida();
+
         } else {
             turnoActual = (turnoActual == jugadorX) ? jugadorO : jugadorX;
             try {
-
                 String oponente = (turnoActual == jugadorX) ? jugadorO.getNombreUsuario() : jugadorX.getNombreUsuario();
                 turnoActual.salida.writeUTF("--> Es tu turno ("+ ((turnoActual == jugadorX) ? 'X' : 'O') +") contra " + oponente);
             } catch (IOException e) { e.printStackTrace(); }
@@ -76,7 +84,6 @@ public class PartidaGato {
     }
 
     private void terminarPartida() {
-
         jugadorX.removerPartida(jugadorO.getNombreUsuario());
         jugadorO.removerPartida(jugadorX.getNombreUsuario());
     }
@@ -86,6 +93,9 @@ public class PartidaGato {
         try {
             otroJugador.salida.writeUTF("--> " + jugadorQueAbandona.getNombreUsuario() + " se ha desconectado de su partida. ¡Tú ganas!");
         } catch (IOException e) { e.printStackTrace(); }
+
+        DataBaseManager.registrarResultado(otroJugador.getNombreUsuario(), jugadorQueAbandona.getNombreUsuario());
+
         terminarPartida();
     }
 }

@@ -21,6 +21,7 @@ public class UnCliente implements Runnable {
 
     private final HashMap<String, PartidaGato> partidasEnJuego = new HashMap<>();
 
+
     UnCliente(Socket s, String idInvitado) throws IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
         this.entrada = new DataInputStream(s.getInputStream());
@@ -44,7 +45,6 @@ public class UnCliente implements Runnable {
         ServidorMulti.clientes.remove(this.idInvitadoOriginal);
         this.nombreUsuario = nombreExitoso;
         this.estaRegistrado = true;
-
         this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
         ServidorMulti.clientes.put(this.nombreUsuario, this);
         salida.writeUTF("--> ¡Autenticación exitosa! Bienvenido, " + this.nombreUsuario);
@@ -115,14 +115,12 @@ public class UnCliente implements Runnable {
                     if (this.partidasEnJuego.containsKey(oponenteNombre)) {
                         salida.writeUTF("--> Ya tienes una partida activa con " + oponenteNombre + "."); continue;
                     }
-
                     if (oponente == null) {
                         salida.writeUTF("--> El usuario '" + oponenteNombre + "' no está conectado."); continue;
                     }
                     if (oponente == this) {
                         salida.writeUTF("--> No puedes jugar contigo mismo."); continue;
                     }
-
                     if (this.usuariosBloqueados.contains(oponenteNombre)) {
                         salida.writeUTF("--> No puedes invitar a '" + oponenteNombre + "' porque lo tienes bloqueado."); continue;
                     }
@@ -156,7 +154,6 @@ public class UnCliente implements Runnable {
 
                     nuevaPartida.iniciarPartida();
                 }
-
                 else if (mensaje.startsWith("/rechazar ")) {
                     String invitadorNombre = mensaje.substring(10).trim();
                     String invitacionReal = ServidorMulti.invitacionesPendientes.get(this.nombreUsuario);
@@ -172,10 +169,8 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> No tienes una invitación pendiente de " + invitadorNombre + ".");
                     }
                 }
-
                 else if (mensaje.startsWith("/move ")) {
                     try {
-
                         String[] partes = mensaje.substring(6).split(" ");
                         if (partes.length < 3) throw new Exception();
 
@@ -194,7 +189,6 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Movimiento inválido. Formato: /move <oponente> <fila> <col>");
                     }
                 }
-
                 else if (mensaje.equals("/partidas")) {
                     if (this.partidasEnJuego.isEmpty()) {
                         salida.writeUTF("--> No estás en ninguna partida.");
@@ -223,13 +217,11 @@ public class UnCliente implements Runnable {
                 }
                 else if (mensaje.startsWith("/w ")) {
                     if (!estaRegistrado) {
-                        salida.writeUTF("--> Debes iniciar sesión para enviar susurros.");
-                        continue;
+                        salida.writeUTF("--> Debes iniciar sesión para enviar susurros."); continue;
                     }
                     String[] partes = mensaje.split(" ", 3);
                     if (partes.length < 3) {
-                        salida.writeUTF("--> Uso incorrecto. Formato: /w <nombre> <mensaje>");
-                        continue;
+                        salida.writeUTF("--> Uso incorrecto. Formato: /w <nombre> <mensaje>"); continue;
                     }
                     String destinatarioNombre = partes[1];
                     String mensajeSusurro = partes[2];
@@ -237,8 +229,7 @@ public class UnCliente implements Runnable {
 
                     if (destinatario != null) {
                         if (destinatario.usuariosBloqueados.contains(this.nombreUsuario)) {
-                            salida.writeUTF("--> No puedes susurrar a " + destinatarioNombre + " (te ha bloqueado).");
-                            continue;
+                            salida.writeUTF("--> No puedes susurrar a " + destinatarioNombre + " (te ha bloqueado)."); continue;
                         }
                         String msgParaDest = this.nombreUsuario + " (te susurra): " + mensajeSusurro;
                         destinatario.salida.writeUTF(msgParaDest);
@@ -281,8 +272,20 @@ public class UnCliente implements Runnable {
                     }
                 }
 
-                else {
+                else if (mensaje.equals("/ranking")) {
+                    String ranking = EstadisticasManager.getRankingGeneralFormateado();
+                    salida.writeUTF(ranking);
+                }
+                else if (mensaje.equals("/stats")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Debes iniciar sesión para ver tus estadísticas.");
+                        continue;
+                    }
+                    String stats = EstadisticasManager.getStatsPersonalesFormateado(this.nombreUsuario);
+                    salida.writeUTF(stats);
+                }
 
+                else {
                     if (estaRegistrado) {
                         String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
                         for (UnCliente cliente : ServidorMulti.clientes.values()) {
@@ -291,7 +294,6 @@ public class UnCliente implements Runnable {
                             }
                         }
                     } else {
-
                         if (contadorMensajesInvitado < 3) {
                             contadorMensajesInvitado++;
                             String mensajeInvitado = this.nombreUsuario + " (invitado): " + mensaje;
@@ -309,7 +311,6 @@ public class UnCliente implements Runnable {
         } catch (IOException ex) {
 
             if (!this.partidasEnJuego.isEmpty()) {
-
                 Set<String> oponentes = Set.copyOf(this.partidasEnJuego.keySet());
                 for (String oponente : oponentes) {
                     PartidaGato partida = this.partidasEnJuego.get(oponente);

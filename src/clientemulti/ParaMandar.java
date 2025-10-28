@@ -30,6 +30,8 @@ public class ParaMandar implements Runnable {
         System.out.println("10. Aceptar/Rechazar invitación");
         System.out.println("11. Hacer un movimiento");
         System.out.println("12. Ver mis partidas activas");
+        System.out.println("13. Ver Ranking General");
+        System.out.println("14. Ver mis Estadísticas");
         System.out.print("Elige una opción: ");
     }
 
@@ -77,7 +79,7 @@ public class ParaMandar implements Runnable {
                         String nuevaPass = teclado.readLine();
                         enviarMensaje("nombre: " + nuevoNombre + " " + nuevaPass);
                         break;
-                    case "8":
+                    case "8": // Iniciar sesión
                         System.out.print("Tu nombre de usuario: ");
                         String nombreLogin = teclado.readLine();
                         System.out.print("Tu contraseña: ");
@@ -114,6 +116,15 @@ public class ParaMandar implements Runnable {
                     case "12": // Ver mis partidas
                         enviarMensaje("/partidas");
                         break;
+
+                    // --- ¡NUEVOS CASOS! ---
+                    case "13": // Ver Ranking
+                        enviarMensaje("/ranking");
+                        break;
+                    case "14": // Ver mis Estadísticas
+                        enviarMensaje("/stats");
+                        break;
+
                     default:
                         System.out.println("--> Opción no válida. Por favor, elige un número del menú.");
                         break;
