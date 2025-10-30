@@ -1,11 +1,14 @@
 package servidormulti;
 
+import servidormulti.grupos.Grupo;
+import servidormulti.grupos.GrupoManager;
 import servidormulti.juego.PartidaGato;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 
 public class UnCliente implements Runnable {
@@ -18,19 +21,27 @@ public class UnCliente implements Runnable {
     private boolean estaRegistrado = false;
     private int contadorMensajesInvitado = 0;
     private Set<String> usuariosBloqueados;
-
     private final HashMap<String, PartidaGato> partidasEnJuego = new HashMap<>();
 
+    private Grupo grupoActual;
 
     UnCliente(Socket s, String idInvitado) throws IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
         this.entrada = new DataInputStream(s.getInputStream());
         this.idInvitadoOriginal = idInvitado;
         this.nombreUsuario = idInvitado;
+
+        this.grupoActual = DataBaseManager.getGrupoPorNombre("Todos");
     }
 
     public String getNombreUsuario() {
         return nombreUsuario;
+    }
+    public Grupo getGrupoActual() {
+        return grupoActual;
+    }
+    public Set<String> getUsuariosBloqueados() {
+        return usuariosBloqueados;
     }
 
     public void agregarPartida(String oponente, PartidaGato partida) {
@@ -47,13 +58,13 @@ public class UnCliente implements Runnable {
         this.estaRegistrado = true;
         this.usuariosBloqueados = DataBaseManager.cargarListaDeBloqueados(this.nombreUsuario);
         ServidorMulti.clientes.put(this.nombreUsuario, this);
+
         salida.writeUTF("--> ¡Autenticación exitosa! Bienvenido, " + this.nombreUsuario);
         System.out.println(this.idInvitadoOriginal + " se ha identificado como " + this.nombreUsuario);
-        for (UnCliente cliente : ServidorMulti.clientes.values()) {
-            if (cliente != this) {
-                cliente.salida.writeUTF("--> " + this.nombreUsuario + " se ha unido al chat.");
-            }
-        }
+
+        ServidorMulti.grupoManager.procesarMensaje(this, this.grupoActual, "(Se ha conectado)");
+
+        ServidorMulti.grupoManager.enviarMensajesNoVistos(this, this.grupoActual);
     }
 
     @Override
@@ -61,17 +72,19 @@ public class UnCliente implements Runnable {
         try {
             ServidorMulti.clientes.put(this.nombreUsuario, this);
             System.out.println("Se conectó un nuevo cliente: " + this.nombreUsuario);
-            salida.writeUTF("--> ¡Bienvenido! El menú de comandos se mostrará en tu cliente.");
+            salida.writeUTF("--> ¡Bienvenido! Estás en el grupo 'Todos'.");
+            salida.writeUTF("--> Usa /menu para ver la guía de comandos.");
+
+            if (estaRegistrado) {
+                ServidorMulti.grupoManager.enviarMensajesNoVistos(this, this.grupoActual);
+            }
 
             while (true) {
                 String mensaje = entrada.readUTF();
 
-                // Lógica de registro
                 if (mensaje.startsWith("nombre: ")) {
                     if (estaRegistrado) { continue; }
-
                     String[] partes = mensaje.substring(8).trim().split(" ", 2);
-
                     if (partes.length < 2) {
                         salida.writeUTF("--> Formato incorrecto. Se necesita: nombre: <usuario> <contraseña>"); continue;
                     }
@@ -87,12 +100,9 @@ public class UnCliente implements Runnable {
                         finalizarAutenticacion(nuevoNombre);
                     }
                 }
-                // Lógica de inicio de sesión
                 else if (mensaje.startsWith("/login ")) {
                     if (estaRegistrado) { continue; }
-
                     String[] partes = mensaje.substring(7).trim().split(" ", 2);
-
                     if (partes.length < 2) {
                         salida.writeUTF("--> Formato incorrecto. Se necesita: /login <usuario> <contraseña>"); continue;
                     }
@@ -109,7 +119,6 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Error: Nombre de usuario o contraseña incorrectos.");
                     }
                 }
-                // Lógica de juego
                 else if (mensaje.startsWith("/jugar ")) {
                     if (!estaRegistrado) {
                         salida.writeUTF("--> Debes iniciar sesión para jugar."); continue;
@@ -204,8 +213,76 @@ public class UnCliente implements Runnable {
                         }
                     }
                 }
-
-                // Lógica de chat
+                else if (mensaje.startsWith("/creargrupo ")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Solo usuarios registrados pueden crear grupos."); continue;
+                    }
+                    String nombreGrupo = mensaje.substring(12).trim();
+                    if (DataBaseManager.crearGrupo(nombreGrupo)) {
+                        salida.writeUTF("--> Grupo '" + nombreGrupo + "' creado.");
+                        Grupo nuevoGrupo = DataBaseManager.getGrupoPorNombre(nombreGrupo);
+                        DataBaseManager.unirUsuarioAGrupo(this.nombreUsuario, nuevoGrupo.id);
+                        salida.writeUTF("--> Te has unido al grupo '" + nombreGrupo + "'.");
+                    } else {
+                        salida.writeUTF("--> Error: El grupo '" + nombreGrupo + "' ya existe o es inválido.");
+                    }
+                }
+                else if (mensaje.startsWith("/borrargrupo ")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Solo usuarios registrados pueden borrar grupos."); continue;
+                    }
+                    String nombreGrupo = mensaje.substring(13).trim();
+                    if (nombreGrupo.equalsIgnoreCase("Todos")) {
+                        salida.writeUTF("--> No se puede borrar el grupo 'Todos'."); continue;
+                    }
+                    if (DataBaseManager.borrarGrupo(nombreGrupo)) {
+                        salida.writeUTF("--> Grupo '" + nombreGrupo + "' borrado.");
+                    } else {
+                        salida.writeUTF("--> Error: El grupo '" + nombreGrupo + "' no existe.");
+                    }
+                }
+                else if (mensaje.startsWith("/unirsegrupo ")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Solo usuarios registrados pueden unirse a grupos."); continue;
+                    }
+                    String nombreGrupo = mensaje.substring(13).trim();
+                    Grupo grupo = DataBaseManager.getGrupoPorNombre(nombreGrupo);
+                    if (grupo != null) {
+                        DataBaseManager.unirUsuarioAGrupo(this.nombreUsuario, grupo.id);
+                        salida.writeUTF("--> Te has unido al grupo '" + nombreGrupo + "'.");
+                    } else {
+                        salida.writeUTF("--> El grupo '" + nombreGrupo + "' no existe.");
+                    }
+                }
+                else if (mensaje.startsWith("/cambiargrupo ")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Solo usuarios registrados pueden cambiar de grupo."); continue;
+                    }
+                    String nombreGrupo = mensaje.substring(14).trim();
+                    Grupo nuevoGrupo = DataBaseManager.getGrupoPorNombre(nombreGrupo);
+                    if (nuevoGrupo != null) {
+                        List<String> miembros = DataBaseManager.getNombresMiembrosDeGrupo(nuevoGrupo.id);
+                        if (miembros.contains(this.nombreUsuario)) {
+                            this.grupoActual = nuevoGrupo;
+                            salida.writeUTF("--> Has cambiado al grupo '" + this.grupoActual.nombre + "'.");
+                            ServidorMulti.grupoManager.enviarMensajesNoVistos(this, this.grupoActual);
+                        } else {
+                            salida.writeUTF("--> No eres miembro del grupo '" + nombreGrupo + "'. Usa /unirsegrupo primero.");
+                        }
+                    } else {
+                        salida.writeUTF("--> El grupo '" + nombreGrupo + "' no existe.");
+                    }
+                }
+                else if (mensaje.equals("/misgrupos")) {
+                    if (!estaRegistrado) {
+                        salida.writeUTF("--> Solo usuarios registrados tienen grupos."); continue;
+                    }
+                    List<Grupo> grupos = DataBaseManager.getGruposDeUsuario(this.nombreUsuario);
+                    salida.writeUTF("--- Tus Grupos ---");
+                    for (Grupo g : grupos) {
+                        salida.writeUTF("- " + g.nombre);
+                    }
+                }
                 else if (mensaje.equals("/listusers")) {
                     if (ServidorMulti.usuariosRegistrados.isEmpty()) {
                         salida.writeUTF("--> Aún no hay usuarios registrados en el servidor.");
@@ -295,8 +372,6 @@ public class UnCliente implements Runnable {
                         salida.writeUTF("--> Usuarios bloqueados: " + String.join(", ", this.usuariosBloqueados));
                     }
                 }
-
-                // Comandos de estadísticas
                 else if (mensaje.equals("/ranking")) {
                     String ranking = EstadisticasManager.getRankingGeneralFormateado();
                     salida.writeUTF(ranking);
@@ -309,29 +384,16 @@ public class UnCliente implements Runnable {
                     String stats = EstadisticasManager.getStatsPersonalesFormateado(this.nombreUsuario);
                     salida.writeUTF(stats);
                 }
-
-                // Mensaje público
                 else {
-                    if (estaRegistrado) {
-                        String mensajeConRemitente = this.nombreUsuario + ": " + mensaje;
-                        for (UnCliente cliente : ServidorMulti.clientes.values()) {
-                            if (cliente != this && !cliente.usuariosBloqueados.contains(this.nombreUsuario)) {
-                                cliente.salida.writeUTF(mensajeConRemitente);
-                            }
-                        }
-                    } else {
-                        if (contadorMensajesInvitado < 3) {
-                            contadorMensajesInvitado++;
-                            String mensajeInvitado = this.nombreUsuario + " (invitado): " + mensaje;
-                            for (UnCliente cliente : ServidorMulti.clientes.values()) {
-                                if (cliente != this) {
-                                    cliente.salida.writeUTF(mensajeInvitado);
-                                }
-                            }
-                        } else {
-                            salida.writeUTF("--> Límite de mensajes de invitado alcanzado. Debes iniciar sesión.");
-                        }
+                    if (!estaRegistrado && contadorMensajesInvitado >= 3) {
+                        salida.writeUTF("--> Límite de mensajes de invitado alcanzado. Debes iniciar sesión.");
+                        continue;
                     }
+                    if (!estaRegistrado) {
+                        contadorMensajesInvitado++;
+                    }
+
+                    ServidorMulti.grupoManager.procesarMensaje(this, this.grupoActual, mensaje);
                 }
             }
         } catch (IOException ex) {
@@ -350,10 +412,9 @@ public class UnCliente implements Runnable {
             ServidorMulti.clientes.remove(this.nombreUsuario);
             if (this.estaRegistrado) {
                 try {
-                    for (UnCliente cliente : ServidorMulti.clientes.values()) {
-                        cliente.salida.writeUTF("--> " + this.nombreUsuario + " ha abandonado el chat.");
-                    }
-                } catch (IOException e) {}
+                    String msgDesconexion = "(Se ha desconectado)";
+                    ServidorMulti.grupoManager.procesarMensaje(this, this.grupoActual, msgDesconexion);
+                } catch (Exception e) {}
             }
         }
     }

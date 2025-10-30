@@ -1,5 +1,7 @@
 package servidormulti;
 
+import servidormulti.grupos.GrupoManager;
+import servidormulti.juego.PartidaGato;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -8,12 +10,14 @@ import java.util.Set;
 
 public class ServidorMulti {
 
-    static HashMap<String, UnCliente> clientes = new HashMap<>();
-
+    public static HashMap<String, UnCliente> clientes = new HashMap<>();
     static Set<String> usuariosRegistrados;
-
     static final HashMap<String, String> invitacionesPendientes = new HashMap<>();
+
+    public static final GrupoManager grupoManager = new GrupoManager();
+
     private static int contadorInvitados = 1;
+
     public static void main(String[] args) {
         DataBaseManager.inicializar();
         usuariosRegistrados = DataBaseManager.cargarUsuariosRegistrados();
