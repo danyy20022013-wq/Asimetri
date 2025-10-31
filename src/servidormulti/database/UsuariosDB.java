@@ -27,6 +27,7 @@ public class UsuariosDB {
 
             conn.commit();
 
+            // Llama a las otras clases de BD para completar el registro
             EstadisticasDB.crearStatsIniciales(nombre);
 
             Grupo grupoTodos = GruposDB.getGrupoPorNombre("Todos");

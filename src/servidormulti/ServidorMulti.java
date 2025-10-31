@@ -11,8 +11,8 @@ import java.util.Set;
 public class ServidorMulti {
 
     public static HashMap<String, UnCliente> clientes = new HashMap<>();
-    static Set<String> usuariosRegistrados;
-    static final HashMap<String, String> invitacionesPendientes = new HashMap<>();
+    public static Set<String> usuariosRegistrados;
+   public  static final HashMap<String, String> invitacionesPendientes = new HashMap<>();
 
     public static final GrupoManager grupoManager = new GrupoManager();
 

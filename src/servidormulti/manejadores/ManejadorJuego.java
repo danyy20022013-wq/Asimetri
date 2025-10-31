@@ -1,5 +1,5 @@
 package servidormulti.manejadores;
-
+import servidormulti.manejadores.*;
 import servidormulti.ServidorMulti;
 import servidormulti.UnCliente;
 import servidormulti.juego.PartidaGato;
