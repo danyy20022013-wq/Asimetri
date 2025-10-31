@@ -1,8 +1,9 @@
 package servidormulti.grupos;
 
-import servidormulti.DataBaseManager;
 import servidormulti.ServidorMulti;
 import servidormulti.UnCliente;
+import servidormulti.database.GruposDB;
+import servidormulti.database.MensajesDB;
 
 import java.io.IOException;
 import java.util.List;
@@ -12,7 +13,7 @@ public class GrupoManager {
     public void procesarMensaje(UnCliente emisor, Grupo grupo, String contenido) {
         String nombreEmisor = emisor.getNombreUsuario();
 
-        long nuevoMensajeId = DataBaseManager.almacenarMensaje(grupo.id, nombreEmisor, contenido);
+        long nuevoMensajeId = MensajesDB.almacenarMensaje(grupo.id, nombreEmisor, contenido);
         if (nuevoMensajeId == -1) {
             try {
                 emisor.salida.writeUTF("--> Error al enviar el mensaje.");
@@ -22,7 +23,7 @@ public class GrupoManager {
 
         String mensajeFormateado = String.format("[%s] %s: %s", grupo.nombre, nombreEmisor, contenido);
 
-        List<String> miembros = DataBaseManager.getNombresMiembrosDeGrupo(grupo.id);
+        List<String> miembros = GruposDB.getNombresMiembrosDeGrupo(grupo.id);
 
         for (String nombreMiembro : miembros) {
             UnCliente miembroConectado = ServidorMulti.clientes.get(nombreMiembro);
@@ -39,11 +40,11 @@ public class GrupoManager {
             }
         }
 
-        DataBaseManager.actualizarUltimoLeido(nombreEmisor, grupo.id, nuevoMensajeId);
+        MensajesDB.actualizarUltimoLeido(nombreEmisor, grupo.id, nuevoMensajeId);
     }
 
     public void enviarMensajesNoVistos(UnCliente usuario, Grupo grupo) {
-        List<Mensaje> mensajes = DataBaseManager.getMensajesNoVistos(usuario.getNombreUsuario(), grupo.id);
+        List<Mensaje> mensajes = MensajesDB.getMensajesNoVistos(usuario.getNombreUsuario(), grupo.id);
 
         if (mensajes.isEmpty()) {
             try {
@@ -69,7 +70,7 @@ public class GrupoManager {
             }
 
             if (ultimoMensajeId != -1) {
-                DataBaseManager.actualizarUltimoLeido(usuario.getNombreUsuario(), grupo.id, ultimoMensajeId);
+                MensajesDB.actualizarUltimoLeido(usuario.getNombreUsuario(), grupo.id, ultimoMensajeId);
             }
             usuario.salida.writeUTF("--- Fin de los mensajes no leídos ---");
 

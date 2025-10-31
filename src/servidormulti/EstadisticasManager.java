@@ -1,4 +1,6 @@
 package servidormulti;
+import servidormulti.database.*;
+
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -8,7 +10,7 @@ import java.util.Locale;
 public class EstadisticasManager {
 
     public static String getStatsPersonalesFormateado(String nombre) {
-        Stats stats = DataBaseManager.getEstadisticas(nombre);
+        Stats stats = EstadisticasDB.getEstadisticas(nombre);
         if (stats == null) {
             return "--> No se encontraron estadísticas para " + nombre;
         }
@@ -25,7 +27,7 @@ public class EstadisticasManager {
     }
 
     public static String getRankingGeneralFormateado() {
-        List<Stats> ranking = DataBaseManager.getRanking();
+        List<Stats> ranking = EstadisticasDB.getRanking();
         if (ranking.isEmpty()) {
             return "--> Aún no hay estadísticas en el ranking.";
         }

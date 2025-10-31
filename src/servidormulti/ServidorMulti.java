@@ -1,5 +1,5 @@
 package servidormulti;
-
+import servidormulti.database.*;
 import servidormulti.grupos.GrupoManager;
 import servidormulti.juego.PartidaGato;
 import java.io.IOException;
@@ -19,8 +19,8 @@ public class ServidorMulti {
     private static int contadorInvitados = 1;
 
     public static void main(String[] args) {
-        DataBaseManager.inicializar();
-        usuariosRegistrados = DataBaseManager.cargarUsuariosRegistrados();
+        ConexionDB.inicializar();
+        usuariosRegistrados = UsuariosDB.cargarUsuariosRegistrados();
         System.out.println("Cargados " + usuariosRegistrados.size() + " usuarios registrados desde la base de datos.");
 
         int puerto = 8080;

@@ -1,7 +1,8 @@
 package servidormulti.juego;
-
-import servidormulti.DataBaseManager;
+import servidormulti.database.*;
 import servidormulti.UnCliente;
+import servidormulti.database.EstadisticasDB;
+
 import java.io.IOException;
 
 public class PartidaGato {
@@ -63,14 +64,14 @@ public class PartidaGato {
             enviarMensajeAmbos("--> ¡Juego terminado! El ganador es " + remitente.getNombreUsuario() + " (" + simbolo + ")");
 
             UnCliente perdedor = (remitente == jugadorX) ? jugadorO : jugadorX;
-            DataBaseManager.registrarResultado(remitente.getNombreUsuario(), perdedor.getNombreUsuario());
+            EstadisticasDB.registrarResultado(remitente.getNombreUsuario(), perdedor.getNombreUsuario());
 
             terminarPartida();
 
         } else if (juego.estaLleno()) {
             enviarMensajeAmbos("--> ¡Juego terminado! Es un empate (gato).");
 
-            DataBaseManager.registrarEmpate(jugadorX.getNombreUsuario(), jugadorO.getNombreUsuario());
+            EstadisticasDB.registrarEmpate(jugadorX.getNombreUsuario(), jugadorO.getNombreUsuario());
 
             terminarPartida();
 
@@ -94,7 +95,7 @@ public class PartidaGato {
             otroJugador.salida.writeUTF("--> " + jugadorQueAbandona.getNombreUsuario() + " se ha desconectado de su partida. ¡Tú ganas!");
         } catch (IOException e) { e.printStackTrace(); }
 
-        DataBaseManager.registrarResultado(otroJugador.getNombreUsuario(), jugadorQueAbandona.getNombreUsuario());
+            EstadisticasDB.registrarResultado(otroJugador.getNombreUsuario(), jugadorQueAbandona.getNombreUsuario());
 
         terminarPartida();
     }
