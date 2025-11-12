@@ -27,3 +27,5 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+# Ignorar la base de datos de SQLite
+chat_database.db
