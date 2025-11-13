@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 public class ServidorMulti {
-
+    public static final int LIMITE_MENSAJES = 3;
     public static HashMap<String, UnCliente> clientes = new HashMap<>();
     public static Set<String> usuariosRegistrados;
    public  static final HashMap<String, String> invitacionesPendientes = new HashMap<>();

@@ -24,7 +24,7 @@ public class ManejadorInfo {
     }
 
     public void manejarOnline(UnCliente emisor) throws IOException {
-        if (!emisor.estaRegistrado() && emisor.getContadorMensajesInvitado() >= 3) {
+        if (!emisor.estaRegistrado() && emisor.getContadorMensajesInvitado() >= ServidorMulti.LIMITE_MENSAJES) {
             emisor.salida.writeUTF("--> Debes iniciar sesión para ver la lista.");
             return;
         }
