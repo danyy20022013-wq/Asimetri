@@ -28,7 +28,7 @@ public class PartidaGato {
             jugadorX.salida.writeUTF(msg);
             jugadorO.salida.writeUTF(msg);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error enviando datos de la partida: " + e.getMessage());
         }
     }
 
@@ -39,14 +39,14 @@ public class PartidaGato {
         try {
             jugadorX.salida.writeUTF("--> Es tu turno (X) contra " + jugadorO.getNombreUsuario());
             jugadorO.salida.writeUTF("--> Es el turno de " + jugadorX.getNombreUsuario() + " (X)");
-        } catch (IOException e) { e.printStackTrace(); }
+        } catch (IOException e) { System.err.println("Error al iniciar  la partida: " + e.getMessage()); }
     }
 
     public synchronized void recibirMovimiento(UnCliente remitente, int fila, int col) {
         if (remitente != turnoActual) {
             try {
                 remitente.salida.writeUTF("--> No es tu turno en esta partida.");
-            } catch (IOException e) { e.printStackTrace(); }
+            } catch (IOException e) { System.err.println("Error enviando aviso de turno incorrecto: " + e.getMessage()); }
             return;
         }
 
@@ -54,7 +54,7 @@ public class PartidaGato {
         if (!juego.hacerMovimiento(fila, col, simbolo)) {
             try {
                 remitente.salida.writeUTF("--> Movimiento inválido. Intenta de nuevo.");
-            } catch (IOException e) { e.printStackTrace(); }
+            } catch (IOException e) { System.err.println("Error enviando aviso de movimiento inválido: " + e.getMessage()); }
             return;
         }
 
@@ -80,7 +80,7 @@ public class PartidaGato {
             try {
                 String oponente = (turnoActual == jugadorX) ? jugadorO.getNombreUsuario() : jugadorX.getNombreUsuario();
                 turnoActual.salida.writeUTF("--> Es tu turno ("+ ((turnoActual == jugadorX) ? 'X' : 'O') +") contra " + oponente);
-            } catch (IOException e) { e.printStackTrace(); }
+            } catch (IOException e) { System.err.println("Error al notificar el siguiente turno: " + e.getMessage());; }
         }
     }
 
@@ -93,7 +93,7 @@ public class PartidaGato {
         UnCliente otroJugador = (jugadorQueAbandona == jugadorX) ? jugadorO : jugadorX;
         try {
             otroJugador.salida.writeUTF("--> " + jugadorQueAbandona.getNombreUsuario() + " se ha desconectado de su partida. ¡Tú ganas!");
-        } catch (IOException e) { e.printStackTrace(); }
+        } catch (IOException e) { System.err.println("Error al notificar abandono de partida: " + e.getMessage()); }
 
             EstadisticasDB.registrarResultado(otroJugador.getNombreUsuario(), jugadorQueAbandona.getNombreUsuario());
 

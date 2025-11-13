@@ -27,7 +27,6 @@ public class UsuariosDB {
 
             conn.commit();
 
-            // Llama a las otras clases de BD para completar el registro
             EstadisticasDB.crearStatsIniciales(nombre);
 
             Grupo grupoTodos = GruposDB.getGrupoPorNombre("Todos");
@@ -36,13 +35,13 @@ public class UsuariosDB {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
             if (conn != null) {
-                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+                try { conn.rollback(); } catch (SQLException ex) { System.err.println("Error en la base de datos: " + e.getMessage()); }
             }
         } finally {
             if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+                try { conn.close(); } catch (SQLException e) { System.err.println("Error en la base de datos: " + e.getMessage()); }
             }
         }
     }
@@ -59,7 +58,7 @@ public class UsuariosDB {
             }
             return false;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
             return false;
         }
     }
@@ -72,7 +71,7 @@ public class UsuariosDB {
             ResultSet rs = pstmt.executeQuery();
             return rs.next();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
             return false;
         }
     }
@@ -87,7 +86,7 @@ public class UsuariosDB {
                 usuarios.add(rs.getString("nombre"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return usuarios;
     }
