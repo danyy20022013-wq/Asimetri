@@ -19,6 +19,12 @@ public class ManejadorAutenticacion {
         String nuevoNombre = partes[0];
         String password = partes[1];
 
+        if (nuevoNombre.startsWith("/")) {
+            emisor.salida.writeUTF("--> Nombre inválido (no puede empezar con '/').");
+            return;
+        }
+
+
         if (UsuariosDB.usuarioExiste(nuevoNombre)) {
             emisor.salida.writeUTF("--> Error: El nombre '" + nuevoNombre + "' ya está registrado.");
         } else {
