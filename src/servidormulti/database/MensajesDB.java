@@ -28,7 +28,7 @@ public class MensajesDB {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return -1;
     }
@@ -55,7 +55,7 @@ public class MensajesDB {
                 ));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return mensajes;
     }
@@ -70,7 +70,7 @@ public class MensajesDB {
             pstmt.setInt(3, grupoId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
     }
 }

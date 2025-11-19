@@ -20,7 +20,7 @@ public class BloqueosDB {
                 bloqueados.add(rs.getString("bloqueado"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return bloqueados;
     }
@@ -33,7 +33,7 @@ public class BloqueosDB {
             pstmt.setString(2, bloqueado);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
     }
 
@@ -45,7 +45,7 @@ public class BloqueosDB {
             pstmt.setString(2, bloqueado);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
     }
 }

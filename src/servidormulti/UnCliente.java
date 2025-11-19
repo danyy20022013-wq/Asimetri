@@ -83,7 +83,7 @@ public class UnCliente implements Runnable {
                 String msgDesconexion = "(Se ha desconectado)";
                 ServidorMulti.grupoManager.procesarMensaje(this, this.grupoActual, msgDesconexion);
             } catch (Exception e) {
-                e.printStackTrace();
+                System.err.println("Error al notificar desconexión de " + this.nombreUsuario + ": " + e.getMessage());
             }
         }
     }

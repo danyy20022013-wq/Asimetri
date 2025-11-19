@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 public class ServidorMulti {
-
+    public static final int LIMITE_MENSAJES = 3;
     public static HashMap<String, UnCliente> clientes = new HashMap<>();
     public static Set<String> usuariosRegistrados;
    public  static final HashMap<String, String> invitacionesPendientes = new HashMap<>();
@@ -35,7 +35,7 @@ public class ServidorMulti {
                 hilo.start();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error  al iniciar o ejecutar el servidor: " + e.getMessage());
         }
     }
 }

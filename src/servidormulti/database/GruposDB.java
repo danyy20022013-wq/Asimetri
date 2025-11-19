@@ -20,7 +20,7 @@ public class GruposDB {
                 return new Grupo(rs.getInt("grupo_id"), nombre);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return null;
     }
@@ -33,7 +33,7 @@ public class GruposDB {
             pstmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
             return false;
         }
     }
@@ -49,7 +49,7 @@ public class GruposDB {
             int filasAfectadas = pstmt.executeUpdate();
             return filasAfectadas > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
             return false;
         }
     }
@@ -77,11 +77,11 @@ public class GruposDB {
             conn.commit();
             return true;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
             try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             return false;
         } finally {
-            try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            try { if (conn != null) conn.close(); } catch (SQLException e) { System.err.println("Error en la base de datos: " + e.getMessage()); }
         }
     }
 
@@ -98,7 +98,7 @@ public class GruposDB {
                 grupos.add(new Grupo(rs.getInt("grupo_id"), rs.getString("nombre")));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return grupos;
     }
@@ -114,7 +114,7 @@ public class GruposDB {
                 miembros.add(rs.getString("nombre_usuario"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return miembros;
     }

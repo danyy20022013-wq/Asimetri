@@ -19,6 +19,12 @@ public class ManejadorAutenticacion {
         String nuevoNombre = partes[0];
         String password = partes[1];
 
+        if (nuevoNombre.startsWith("/")) {
+            emisor.salida.writeUTF("--> Nombre inválido (no puede empezar con '/').");
+            return;
+        }
+
+
         if (UsuariosDB.usuarioExiste(nuevoNombre)) {
             emisor.salida.writeUTF("--> Error: El nombre '" + nuevoNombre + "' ya está registrado.");
         } else {
@@ -40,15 +46,20 @@ public class ManejadorAutenticacion {
         String nombreLogin = partes[0];
         String passwordLogin = partes[1];
 
-        if (ServidorMulti.clientes.containsKey(nombreLogin)) {
-            emisor.salida.writeUTF("--> Error: El usuario '" + nombreLogin + "' ya está conectado.");
-            return;
+        synchronized (ServidorMulti.clientes) {
+
+            if (ServidorMulti.clientes.containsKey(nombreLogin)) {
+                emisor.salida.writeUTF("--> Error: El usuario '" + nombreLogin + "' ya está conectado.");
+                return;
+            }
+
+            if (UsuariosDB.validarLogin(nombreLogin, passwordLogin)) {
+
+                emisor.finalizarAutenticacion(nombreLogin);
+            } else {
+                emisor.salida.writeUTF("--> Error: Nombre de usuario o contraseña incorrectos.");
+            }
         }
 
-        if (UsuariosDB.validarLogin(nombreLogin, passwordLogin)) {
-            emisor.finalizarAutenticacion(nombreLogin);
-        } else {
-            emisor.salida.writeUTF("--> Error: Nombre de usuario o contraseña incorrectos.");
-        }
     }
 }

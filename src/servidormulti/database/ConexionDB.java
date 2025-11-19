@@ -50,7 +50,7 @@ public class ConexionDB {
                 pstmt.executeUpdate();
                 System.out.println("Grupo por defecto 'Todos' creado.");
             } catch (SQLException e) {
-                e.printStackTrace();
+                System.err.println("Error en la base de datos: " + e.getMessage());
             }
         }
     }

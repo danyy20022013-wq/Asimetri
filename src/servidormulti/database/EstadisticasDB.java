@@ -18,7 +18,7 @@ public class EstadisticasDB {
             pstmt.setString(1, nombre);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
     }
 
@@ -39,7 +39,7 @@ public class EstadisticasDB {
             }
             conn.commit();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
     }
 
@@ -58,7 +58,7 @@ public class EstadisticasDB {
             conn.commit();
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
     }
 
@@ -72,7 +72,7 @@ public class EstadisticasDB {
                 return new Stats(nombre, rs.getInt("victorias"), rs.getInt("empates"), rs.getInt("derrotas"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return null;
     }
@@ -87,7 +87,7 @@ public class EstadisticasDB {
                 ranking.add(new Stats(rs.getString("nombre"), rs.getInt("victorias"), rs.getInt("empates"), rs.getInt("derrotas")));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error en la base de datos: " + e.getMessage());
         }
         return ranking;
     }

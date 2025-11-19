@@ -91,7 +91,7 @@ public class ManejadorGrupos {
     }
 
     public void manejarChatDeGrupo(UnCliente emisor, String mensaje) throws IOException {
-        if (!emisor.estaRegistrado() && emisor.getContadorMensajesInvitado() >= 3) {
+        if (!emisor.estaRegistrado() && emisor.getContadorMensajesInvitado() >= ServidorMulti.LIMITE_MENSAJES) {
             emisor.salida.writeUTF("--> Límite de mensajes de invitado alcanzado. Debes iniciar sesión.");
             return;
         }
