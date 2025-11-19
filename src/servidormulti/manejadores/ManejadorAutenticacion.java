@@ -46,15 +46,20 @@ public class ManejadorAutenticacion {
         String nombreLogin = partes[0];
         String passwordLogin = partes[1];
 
-        if (ServidorMulti.clientes.containsKey(nombreLogin)) {
-            emisor.salida.writeUTF("--> Error: El usuario '" + nombreLogin + "' ya está conectado.");
-            return;
+        synchronized (ServidorMulti.clientes) {
+
+            if (ServidorMulti.clientes.containsKey(nombreLogin)) {
+                emisor.salida.writeUTF("--> Error: El usuario '" + nombreLogin + "' ya está conectado.");
+                return;
+            }
+
+            if (UsuariosDB.validarLogin(nombreLogin, passwordLogin)) {
+
+                emisor.finalizarAutenticacion(nombreLogin);
+            } else {
+                emisor.salida.writeUTF("--> Error: Nombre de usuario o contraseña incorrectos.");
+            }
         }
 
-        if (UsuariosDB.validarLogin(nombreLogin, passwordLogin)) {
-            emisor.finalizarAutenticacion(nombreLogin);
-        } else {
-            emisor.salida.writeUTF("--> Error: Nombre de usuario o contraseña incorrectos.");
-        }
     }
 }

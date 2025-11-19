@@ -35,7 +35,7 @@ public class ServidorMulti {
                 hilo.start();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error  al iniciar o ejecutar el servidor: " + e.getMessage());
         }
     }
 }
